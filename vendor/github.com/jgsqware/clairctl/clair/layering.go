@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/clair/api/v1"
-	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/reference"
 	"github.com/jgsqware/clairctl/config"
 	"github.com/jgsqware/clairctl/docker/dockerdist"
 	"github.com/jgsqware/clairctl/xstrings"
@@ -50,19 +50,18 @@ func (layers *layering) pushAll() error {
 
 		lUID := xstrings.Substr(digest, 0, 12)
 		log.Infof("Pushing Layer %d/%d [%v]", index+1, layerCount, lUID)
-		domain := reference.Domain(layers.image)
-		insertRegistryMapping(digest, domain)
-		u, _ := dockerdist.GetPushURL(domain)
+		insertRegistryMapping(digest, layers.image.Hostname())
+		u, _ := dockerdist.GetPushURL(layers.image.Hostname())
 		payload := v1.LayerEnvelope{Layer: &v1.Layer{
 			Name:       digest,
-			Path:       blobsURI(u.String(), reference.Path(layers.image), digest),
+			Path:       blobsURI(u.String(), layers.image.RemoteName(), digest),
 			ParentName: layers.parentID,
 			Format:     "Docker",
 		}}
 
 		//FIXME Update to TLS
 		if config.IsLocal {
-			local := layers.hURL + "/" + domain
+			local := layers.hURL + "/" + layers.image.Hostname()
 			payload.Layer.Path = strings.Replace(payload.Layer.Path, u.String(), local, 1)
 			payload.Layer.Path += "/layer.tar"
 		}
@@ -99,7 +98,7 @@ func (layers *layering) analyzeAll() ImageAnalysis {
 		}
 	}
 	return ImageAnalysis{
-		Registry:  xstrings.TrimPrefixSuffix(reference.Domain(layers.image), "http://", "/v2"),
+		Registry:  xstrings.TrimPrefixSuffix(layers.image.Hostname(), "http://", "/v2"),
 		ImageName: layers.image.Name(),
 		Tag:       layers.image.Tag(),
 		Layers:    res,

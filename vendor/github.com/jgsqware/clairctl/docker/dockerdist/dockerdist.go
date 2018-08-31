@@ -30,10 +30,10 @@ import (
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/cli/cli/config"
+	"github.com/docker/docker/cli/config"
 	"github.com/docker/docker/distribution"
 	"github.com/docker/docker/dockerversion"
-	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/viper"
@@ -54,7 +54,7 @@ func isInsecureRegistry(registryHostname string) bool {
 	return false
 }
 
-func getService() (*registry.DefaultService, error) {
+func getService() *registry.DefaultService {
 	serviceOptions := registry.ServiceOptions{
 		InsecureRegistries: viper.GetStringSlice("docker.insecure-registries"),
 	}
@@ -64,11 +64,7 @@ func getService() (*registry.DefaultService, error) {
 // getRepositoryClient returns a client for performing registry operations against the given named
 // image.
 func getRepositoryClient(image reference.Named, insecure bool, scopes ...string) (distlib.Repository, error) {
-	service, err := getService()
-	if err != nil {
-		log.Debugf("Cannot get service: %v", err)
-		return nil, err
-	}
+	service := getService()
 	log.Debugf("Retrieving repository client")
 
 	ctx := context.Background()
@@ -95,7 +91,7 @@ func getRepositoryClient(image reference.Named, insecure bool, scopes ...string)
 	}
 
 	metaHeaders := map[string][]string{}
-	endpoints, err := service.LookupPullEndpoints(reference.Domain(image))
+	endpoints, err := service.LookupPullEndpoints(image.Hostname())
 	if err != nil {
 		log.Debugf("registry.LookupPullEndpoints error: %v", err)
 		return nil, err
@@ -130,11 +126,7 @@ func getRepositoryClient(image reference.Named, insecure bool, scopes ...string)
 }
 
 func GetPushURL(hostname string) (*url.URL, error) {
-	service, err := getService()
-	if err != nil {
-		log.Debugf("Cannot get service: %v", err)
-		return nil, err
-	}
+	service := getService()
 	endpoints, err := service.LookupPushEndpoints(hostname)
 	if err != nil {
 		log.Debugf("registry.LookupPushEndpoints error: %v", err)
@@ -216,10 +208,11 @@ func DownloadManifest(image string, insecure bool) (reference.NamedTagged, distl
 		return nil, nil, err
 	}
 	if reference.IsNameOnly(n) {
-		n, _ = reference.ParseNamed(image + ":latest")
+		n, _ = reference.ParseNamed(image + ":" + reference.DefaultTag)
 	}
 
 	named := n.(reference.NamedTagged)
+
 	// Create a reference to a repository client for the repo.
 	repo, err := getRepositoryClient(named, insecure, "pull")
 	if err != nil {

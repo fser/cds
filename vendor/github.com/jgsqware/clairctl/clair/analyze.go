@@ -9,7 +9,7 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
-	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/reference"
 )
 
 //Analyze return Clair Image analysis
